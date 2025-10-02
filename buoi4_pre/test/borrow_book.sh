@@ -1,8 +1,9 @@
-# POST /borrows
-# {
-#   "book_id": 1
-# }
+# Borrow a book by ID
+# Usage: ./borrow_book.sh <id>
 
-curl -X POST http://127.0.0.1:5000/books \
-     -H "Content-Type: application/json" \
-     -d '{"book_id": 1}'
+if [ -z "$1" ]; then
+  echo "Usage: ./borrow_book.sh <book_id>"
+  exit 1
+fi
+
+curl -s -X PUT http://127.0.0.1:5000/books/$1/borrow | jq .
