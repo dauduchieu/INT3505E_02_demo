@@ -11,6 +11,7 @@ servers:
 paths:
   /books:
     get:
+      operationId: server.get_all_books
       summary: Get all books
       description: Retrieve a list of all books.
       parameters:
@@ -46,6 +47,7 @@ paths:
         '304':
           description: Not Modified - The list has not changed since the last request.
     post:
+      operationId: server.add_book
       summary: Add a new book
       description: Add a new book to the collection. Requires authentication token.
       requestBody:
@@ -69,6 +71,7 @@ paths:
           description: Unsupported Media Type
   /books/{book_id}:
     get:
+      operationId: server.get_book
       summary: Get a book by ID
       description: Retrieve a single book by its ID.
       parameters:
@@ -88,6 +91,7 @@ paths:
         '404':
           description: Book not found
     patch:
+      operationId: server.update_book
       summary: Update a book by ID
       description: Update the details of a book by its ID. Requires authentication token.
       parameters:
@@ -119,6 +123,7 @@ paths:
         '415':
           description: Unsupported Media Type
     delete:
+      operationId: server.delete_book
       summary: Delete a book by ID
       description: Delete a book from the collection by its ID. Requires authentication token.
       parameters:
