@@ -53,7 +53,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Book'
+              $ref: '#/components/schemas/NewBook'
       responses:
         '201':
           description: Book added.
@@ -144,6 +144,16 @@ components:
         id:
           type: integer
           example: 1
+        title:
+          type: string
+          example: "The Great Gatsby"
+        author:
+          type: string
+          example: "Author 123"
+    NewBook:
+      type: object
+      required: [title, author]
+      properties:
         title:
           type: string
           example: "The Great Gatsby"
