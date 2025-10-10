@@ -1,0 +1,153 @@
+openapi: 3.0.4
+info:
+  title: Book API
+  description: API for managing a collection of books.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:5000
+    description: Local server
+
+paths:
+  /books:
+    get:
+      summary: Get all books
+      description: Retrieve a list of all books.
+      parameters:
+        - in: headers
+          name: If-None-Match
+          required: false
+          schema:
+            type: string
+          description: ETag value to check for changes.
+      responses:
+        '200':
+          description: A list of books.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+          headers:
+            Content-Type:
+              description: The content type of the response.
+              schema:
+                type: string
+                example: application/json
+            Cache-Control:
+              description: Cache control header.
+              schema:
+                type: string
+            ETag:
+              description: ETag for the current list of books.
+              schema:
+                type: string
+        '304':
+          description: Not Modified - The list has not changed since the last request.
+    post:
+      summary: Add a new book
+      description: Add a new book to the collection. Requires authentication token.
+      requestBody:
+        require: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Book'
+      responses:
+        '201':
+          description: Book added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          description: Bad Request - Invalid input
+        '401':
+          description: Unauthorized - Missing or invalid token
+        '415':
+          description: Unsupported Media Type
+  /books/{book_id}:
+    get:
+      summary: Get a book by ID
+      description: Retrieve a single book by its ID.
+      parameters:
+        - in: path
+          name: book_id
+          required: true
+          schema:
+            type: integer
+          description: The ID of the book to retrieve.
+      responses:
+        '200':
+          description: A single book.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '404':
+          description: Book not found
+    patch:
+      summary: Update a book by ID
+      description: Update the details of a book by its ID. Requires authentication token.
+      parameters:
+        - in: path
+          name: book_id
+          required: true
+          schema:
+            type: integer
+          description: The ID of the book to update.
+      requestBody:
+        require: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Book'
+      responses:
+        '200':
+          description: Book updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          description: Bad Request - Invalid input
+        '401':
+          description: Unauthorized - Missing or invalid token
+        '404':
+          description: Book not found
+        '415':
+          description: Unsupported Media Type
+    delete:
+      summary: Delete a book by ID
+      description: Delete a book from the collection by its ID. Requires authentication token.
+      parameters:
+        - in: path
+          name: book_id
+          required: true
+          schema:
+            type: integer
+          description: The ID of the book to delete.
+      responses:
+        '200':
+          description: Book deleted successfully.
+        '401':
+          description: Unauthorized - Missing or invalid token
+        '404':
+          description: Book not found
+
+components:
+  schemas:
+    Book:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: "The Great Gatsby"
+        author:
+          type: string
+          example: "Author 123"
+
