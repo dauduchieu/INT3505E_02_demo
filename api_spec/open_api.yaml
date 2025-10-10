@@ -48,6 +48,13 @@ paths:
     post:
       summary: Add a new book
       description: Add a new book to the collection. Requires authentication token.
+      parameters:
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+          description: Bearer token for authentication.
       requestBody:
         required: true
         content:
@@ -97,6 +104,12 @@ paths:
           schema:
             type: integer
           description: The ID of the book to update.
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+          description: Bearer token for authentication.
       requestBody:
         required: true
         content:
@@ -128,6 +141,12 @@ paths:
           schema:
             type: integer
           description: The ID of the book to delete.
+        - in: header
+          name: Authorization
+          required: true
+          schema:
+            type: string
+          description: Bearer token for authentication.
       responses:
         '200':
           description: Book deleted successfully.
