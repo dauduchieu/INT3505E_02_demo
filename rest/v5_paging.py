@@ -33,18 +33,14 @@ def require_token(f):
     return wrapper
 
 
-def generate_etag():
-    books_json = json.dumps(books, sort_keys=True)
+def generate_etag(data_books=None):
+    if data_books is None:
+        data_books = books
+    books_json = json.dumps(data_books, sort_keys=True)
     return hashlib.md5(books_json.encode()).hexdigest()
 
 @app.route('/books', methods=['GET'])
 def get_all_books():
-    etag = generate_etag()
-    client_etag = request.headers.get('If-None-Match')
-
-    if client_etag == etag:
-        return 'Not Modifier', 304
-    
     # Page-based pagination
     page = int(request.args.get('page', 1))
     limit = int(request.args.get('limit', 2))
@@ -52,6 +48,12 @@ def get_all_books():
     end = start + limit
     total_pages = (len(books) + limit - 1) // limit
     paged_books = books[start:end]
+    
+    etag = generate_etag(data_books=paged_books)
+    client_etag = request.headers.get('If-None-Match')
+
+    if client_etag == etag:
+        return 'Not Modifier', 304
     
     data = {
         "page": page,
