@@ -1,8 +1,17 @@
 from flask import Flask, request, jsonify, make_response
 import hashlib
 import json
+import jwt
+import datetime
+from functools import wraps
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret_jwt_key'
+
+users = [
+    {"id": 1, "username": "admin", "password": "123", "role": "admin"},
+    {"id": 2, "username": "user", "password": "123", "role": "user"}
+]
 
 books = [
     {"id": 1, "title": "1984", "author": "George Orwell"},
@@ -22,16 +31,42 @@ books = [
     {"id": 15, "title": "The Divine Comedy", "author": "Dante Alighieri"}
 ]
 
-SAMPLE_TOKEN = "hehe123"
-def require_token(f):
-    def wrapper(*args, **kwargs):
-        token = request.headers.get('Authorization')
-        if token != f"Bearer {SAMPLE_TOKEN}":
-            return {"error": "Unauthorized"}, 401
-        return f(*args, **kwargs)
-    wrapper.__name__ = f.__name__
-    return wrapper
+def generate_token(user):
+    payload = {
+        'user_id': user['id'],
+        'username': user['username'],
+        'role': user['role'],
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=3600)
+    }
+    token = jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
+    return token
 
+def decode_token(token):
+    try:
+        payload = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        return payload
+    except jwt.ExpiredSignatureError:
+        return {"error": "Token expired"}
+    except jwt.InvalidTokenError:
+        return {"error": "Invalid token"}
+    
+def require_token(role=None):
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            token = request.headers.get('Authorization')
+            if not token or not token.startswith("Bearer "):
+                return {"error": "Unauthorized"}, 401
+            token = token.split(" ")[1]
+            decoded = decode_token(token)
+            if "error" in decoded:
+                return decoded, 401
+            if role and decoded.get('role') != role:
+                return {"error": "Forbidden"}, 403
+            request.user = decoded
+            return f(*args, **kwargs)
+        return wrapper
+    return decorator
 
 def generate_etag(data_books=None):
     if data_books is None:
@@ -39,15 +74,41 @@ def generate_etag(data_books=None):
     books_json = json.dumps(data_books, sort_keys=True)
     return hashlib.md5(books_json.encode()).hexdigest()
 
+
+@app.route('/login', methods=['POST'])
+def login():
+    if not request.is_json:
+        return {"error": "Request must be JSON"}, 415
+    username = request.json.get('username')
+    password = request.json.get('password')
+    user = next((u for u in users if u['username'] == username and u['password'] == password), None)
+    if not user:
+        return {"error": "Invalid credentials"}, 401
+    token = generate_token(user)
+    return jsonify({
+        "token": token,
+        "token_type": "Bearer",
+        "expires_in": 3600
+    })
+
+
 @app.route('/books', methods=['GET'])
+@require_token()
 def get_all_books():
+    # Search before pagination
+    search = request.args.get('search', '').lower()
+    filtered_books = [
+        b for b in books
+        if search in b['title'].lower() or search in b['author'].lower()
+    ] if search else books
+    
     # Page-based pagination
     page = int(request.args.get('page', 1))
     limit = int(request.args.get('limit', 2))
     start = (page - 1) * limit
     end = start + limit
-    total_pages = (len(books) + limit - 1) // limit
-    paged_books = books[start:end]
+    total_pages = (len(filtered_books) + limit - 1) // limit
+    paged_books = filtered_books[start:end]
     
     etag = generate_etag(data_books=paged_books)
     client_etag = request.headers.get('If-None-Match')
@@ -77,7 +138,7 @@ def get_book(book_id):
 
 
 @app.route('/books', methods=['POST'])
-@require_token
+@require_token(role='admin')
 def add_book():
     if not request.is_json:
         return {"error": "Request must be JSON"}, 415
