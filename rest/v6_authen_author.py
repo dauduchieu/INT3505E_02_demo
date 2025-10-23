@@ -7,6 +7,7 @@ from functools import wraps
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret_jwt_key'
+token_expiration_seconds = 30
 
 users = [
     {"id": 1, "username": "admin", "password": "123", "role": "admin"},
@@ -36,7 +37,7 @@ def generate_token(user):
         'user_id': user['id'],
         'username': user['username'],
         'role': user['role'],
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=3600)
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(seconds=token_expiration_seconds)
     }
     token = jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
     return token
@@ -88,7 +89,7 @@ def login():
     return jsonify({
         "token": token,
         "token_type": "Bearer",
-        "expires_in": 3600
+        "expires_in": token_expiration_seconds
     })
 
 
