@@ -7,7 +7,7 @@ from functools import wraps
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret_jwt_key'
-token_expiration_seconds = 30
+token_expiration_seconds = 3600
 
 users = [
     {"id": 1, "username": "admin", "password": "123", "role": "admin"},
