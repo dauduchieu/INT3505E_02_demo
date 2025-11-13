@@ -14,7 +14,9 @@ users = [
     {"id": 2, "username": "user", "password": "123", "role": "user"}
 ]
 
-# v1 books
+# ---------------------------
+# Versioned books
+# ---------------------------
 books_v1 = [
     {"id": 1, "title": "1984", "author": "George Orwell"},
     {"id": 2, "title": "To Kill a Mockingbird", "author": "Harper Lee"},
@@ -22,7 +24,6 @@ books_v1 = [
     {"id": 4, "title": "Brave New World", "author": "Aldous Huxley"},
 ]
 
-# v2 books (breaking change: thêm `published_year`)
 books_v2 = [
     {"id": 1, "title": "1984", "author": "George Orwell", "published_year": 1949},
     {"id": 2, "title": "To Kill a Mockingbird", "author": "Harper Lee", "published_year": 1960},
@@ -30,6 +31,12 @@ books_v2 = [
     {"id": 4, "title": "Brave New World", "author": "Aldous Huxley", "published_year": 1932},
 ]
 
+# Warning header for deprecated API v1
+DEPRECATION_WARNING = '299 - "API v1 will be deprecated on 2025-12-31"'
+
+# ---------------------------
+# JWT helpers
+# ---------------------------
 def generate_token(user):
     payload = {
         'user_id': user['id'],
@@ -73,7 +80,6 @@ def generate_etag(data_books=None):
     books_json = json.dumps(data_books, sort_keys=True)
     return hashlib.md5(books_json.encode()).hexdigest()
 
-
 # ---------------------------
 # Authentication
 # ---------------------------
@@ -93,55 +99,10 @@ def login(version):
         "expires_in": token_expiration_seconds
     })
 
-
-# ---------------------------
-# Books v1
-# ---------------------------
-@app.route('/api/v1/books', methods=['GET'])
-@require_token()
-def get_books_v1():
-    return get_books_generic(books_v1)
-
-@app.route('/api/v1/books/<int:book_id>', methods=['GET'])
-@require_token()
-def get_book_v1(book_id):
-    book = next((b for b in books_v1 if b['id'] == book_id), None)
-    if book:
-        return jsonify(book)
-    return {"error": "Book not found"}, 404
-
-@app.route('/api/v1/books', methods=['POST'])
-@require_token(role='admin')
-def add_book_v1():
-    return add_book_generic(books_v1)
-
-
-# ---------------------------
-# Books v2 (breaking change)
-# ---------------------------
-@app.route('/api/v2/books', methods=['GET'])
-@require_token()
-def get_books_v2():
-    return get_books_generic(books_v2)
-
-@app.route('/api/v2/books/<int:book_id>', methods=['GET'])
-@require_token()
-def get_book_v2(book_id):
-    book = next((b for b in books_v2 if b['id'] == book_id), None)
-    if book:
-        return jsonify(book)
-    return {"error": "Book not found"}, 404
-
-@app.route('/api/v2/books', methods=['POST'])
-@require_token(role='admin')
-def add_book_v2():
-    return add_book_generic(books_v2)
-
-
 # ---------------------------
 # Generic helpers
 # ---------------------------
-def get_books_generic(book_list):
+def get_books_generic(book_list, deprecated=False):
     search = request.args.get('search', '').lower()
     filtered_books = [b for b in book_list if search in b['title'].lower() or search in b['author'].lower()] if search else book_list
     page = int(request.args.get('page', 1))
@@ -161,6 +122,8 @@ def get_books_generic(book_list):
     response.headers['Content-Type'] = 'application/json'
     response.headers['Cache-Control'] = 'public, max-age=60'
     response.headers['ETag'] = etag
+    if deprecated:
+        response.headers['Warning'] = DEPRECATION_WARNING
     return response
 
 def add_book_generic(book_list):
@@ -172,13 +135,62 @@ def add_book_generic(book_list):
         return {"error": "Title and author are required"}, 400
     new_id = max(b['id'] for b in book_list) + 1 if book_list else 1
     new_book = {"id": new_id, "title": title, "author": author}
-    # v2: có thể thêm published_year
     if book_list is books_v2:
         new_book["published_year"] = request.json.get('published_year', 2025)
     book_list.append(new_book)
     response = make_response(jsonify(new_book), 201)
     return response
 
+# ---------------------------
+# Books v1 (deprecated)
+# ---------------------------
+@app.route('/api/v1/books', methods=['GET'])
+@require_token()
+def get_books_v1():
+    return get_books_generic(books_v1, deprecated=True)
 
+@app.route('/api/v1/books/<int:book_id>', methods=['GET'])
+@require_token()
+def get_book_v1(book_id):
+    book = next((b for b in books_v1 if b['id'] == book_id), None)
+    if book:
+        resp = make_response(jsonify(book))
+        resp.headers['Warning'] = DEPRECATION_WARNING
+        return resp
+    resp = make_response(jsonify({"error": "Book not found"}), 404)
+    resp.headers['Warning'] = DEPRECATION_WARNING
+    return resp
+
+@app.route('/api/v1/books', methods=['POST'])
+@require_token(role='admin')
+def add_book_v1():
+    response = add_book_generic(books_v1)
+    response.headers['Warning'] = DEPRECATION_WARNING
+    return response
+
+# ---------------------------
+# Books v2
+# ---------------------------
+@app.route('/api/v2/books', methods=['GET'])
+@require_token()
+def get_books_v2():
+    return get_books_generic(books_v2)
+
+@app.route('/api/v2/books/<int:book_id>', methods=['GET'])
+@require_token()
+def get_book_v2(book_id):
+    book = next((b for b in books_v2 if b['id'] == book_id), None)
+    if book:
+        return jsonify(book)
+    return {"error": "Book not found"}, 404
+
+@app.route('/api/v2/books', methods=['POST'])
+@require_token(role='admin')
+def add_book_v2():
+    return add_book_generic(books_v2)
+
+# ---------------------------
+# Run server
+# ---------------------------
 if __name__ == '__main__':
     app.run(port=5000, debug=True)
