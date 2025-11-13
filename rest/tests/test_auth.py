@@ -57,3 +57,5 @@ def test_require_token_allows_valid_token():
 
     with app.test_request_context(headers={"Authorization": f"Bearer {token}"}):
         assert protected() == "OK"
+
+
