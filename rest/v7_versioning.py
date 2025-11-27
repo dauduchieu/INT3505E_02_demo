@@ -145,12 +145,12 @@ def add_book_generic(book_list):
 # Books v1 (deprecated)
 # ---------------------------
 @app.route('/api/v1/books', methods=['GET'])
-@require_token()
+# @require_token()
 def get_books_v1():
     return get_books_generic(books_v1, deprecated=True)
 
 @app.route('/api/v1/books/<int:book_id>', methods=['GET'])
-@require_token()
+# @require_token()
 def get_book_v1(book_id):
     book = next((b for b in books_v1 if b['id'] == book_id), None)
     if book:
